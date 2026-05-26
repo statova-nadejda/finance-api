@@ -1,5 +1,7 @@
 package com.finance.service;
 
+import com.finance.dto.CategoryRequest;
+import com.finance.dto.CategoryResponse;
 import com.finance.exception.InvalidDataException;
 import com.finance.exception.ResourceNotFoundException;
 import com.finance.model.Category;
@@ -15,30 +17,37 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    public List<Category> getAll() {
-        return categoryRepository.findAll();
+    public List<CategoryResponse> getAll() {
+        return categoryRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Category getById(Long id) {
+    public CategoryResponse getById(Long id) {
         validateId(id);
-        return findExisting(id);
+        return toResponse(findExisting(id));
     }
 
-    public Category create(Category category) {
-        validateCategory(category);
-        return categoryRepository.save(category);
+    public CategoryResponse create(CategoryRequest request) {
+        validateCategory(request);
+
+        Category category = new Category();
+        category.setName(request.name());
+        category.setType(request.type());
+
+        return toResponse(categoryRepository.save(category));
     }
 
-    public Category update(Long id, Category categoryDetails) {
+    public CategoryResponse update(Long id, CategoryRequest request) {
         validateId(id);
-        validateCategory(categoryDetails);
+        validateCategory(request);
 
         Category category = findExisting(id);
+        category.setName(request.name());
+        category.setType(request.type());
 
-        category.setName(categoryDetails.getName());
-        category.setType(categoryDetails.getType());
-
-        return categoryRepository.save(category);
+        return toResponse(categoryRepository.save(category));
     }
 
     public void delete(Long id) {
@@ -51,13 +60,17 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
     }
 
+    private CategoryResponse toResponse(Category category) {
+        return new CategoryResponse(category.getId(), category.getName(), category.getType());
+    }
+
     private void validateId(Long id) {
         if (id == null || id <= 0) {
             throw new InvalidDataException("Id must be greater than 0");
         }
     }
 
-    private void validateCategory(Category category) {
+    private void validateCategory(CategoryRequest category) {
         if (category == null) {
             throw new InvalidDataException("Category data is required");
         }

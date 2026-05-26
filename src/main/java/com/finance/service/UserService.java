@@ -1,5 +1,7 @@
 package com.finance.service;
 
+import com.finance.dto.UserRequest;
+import com.finance.dto.UserResponse;
 import com.finance.exception.InvalidDataException;
 import com.finance.exception.UserNotFoundException;
 import com.finance.model.User;
@@ -15,30 +17,37 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public List<User> getAll() {
-        return userRepository.findAll();
+    public List<UserResponse> getAll() {
+        return userRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public User getById(Long id) {
+    public UserResponse getById(Long id) {
         validateId(id);
-        return findExisting(id);
+        return toResponse(findExisting(id));
     }
 
-    public User create(User user) {
-        validateUser(user);
-        return userRepository.save(user);
+    public UserResponse create(UserRequest request) {
+        validateUser(request);
+
+        User user = new User();
+        user.setName(request.name());
+        user.setEmail(request.email());
+
+        return toResponse(userRepository.save(user));
     }
 
-    public User update(Long id, User userDetails) {
+    public UserResponse update(Long id, UserRequest request) {
         validateId(id);
-        validateUser(userDetails);
+        validateUser(request);
 
         User user = findExisting(id);
+        user.setName(request.name());
+        user.setEmail(request.email());
 
-        user.setName(userDetails.getName());
-        user.setEmail(userDetails.getEmail());
-
-        return userRepository.save(user);
+        return toResponse(userRepository.save(user));
     }
 
     public void delete(Long id) {
@@ -51,13 +60,17 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
     }
 
+    private UserResponse toResponse(User user) {
+        return new UserResponse(user.getId(), user.getName(), user.getEmail());
+    }
+
     private void validateId(Long id) {
         if (id == null || id <= 0) {
             throw new InvalidDataException("Id must be greater than 0");
         }
     }
 
-    private void validateUser(User user) {
+    private void validateUser(UserRequest user) {
         if (user == null) {
             throw new InvalidDataException("User data is required");
         }
